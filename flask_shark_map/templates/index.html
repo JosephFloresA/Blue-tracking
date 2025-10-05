@@ -1,0 +1,1095 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shark Data Visualization</title>
+    
+    <!-- Mapbox GL JS -->
+    <script src='https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js'></script>
+    <link href='https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css' rel='stylesheet' />
+    
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+        }
+        
+        #map {
+            width: 100vw;
+            height: 1000px;
+        }
+        
+        .info-panel {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            max-width: 300px;
+            z-index: 1000;
+            max-height: calc(100vh - 120px);
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+        
+        /* Estilo personalizado para la scrollbar */
+        .info-panel::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .info-panel::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 3px;
+        }
+
+        .info-panel::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 3px;
+        }
+
+        .info-panel::-webkit-scrollbar-thumb:hover {
+            background: #a8a8a8;
+        }
+        
+        .legend {
+            position: absolute;
+            bottom: 30px;
+            right: 10px;
+            background: white;
+            padding: 10px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            z-index: 1000;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin: 5px 0;
+        }
+        
+        .legend-color {
+            width: 15px;
+            height: 15px;
+            margin-right: 10px;
+            border-radius: 50%;
+        }
+        
+        .month-selector {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #eee;
+        }
+        
+        .month-selector h4 {
+            margin: 0 0 10px 0;
+            font-size: 14px;
+        }
+        
+        .month-selector label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        
+        .month-selector select {
+            width: 100%;
+            padding: 5px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+        
+        .nasa-header {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 80px;
+            background: linear-gradient(135deg, #0B3D91 0%, #1e5799 50%, #2989d8 100%);
+            color: white;
+            z-index: 1001;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        }
+        
+        .nasa-logo-section {
+            display: flex;
+            align-items: center;
+            font-weight: bold;
+        }
+        
+        .nasa-logo {
+            width: 80px;
+            height: 50px;
+            margin-right: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .nasa-logo img {
+            width: 100%;
+            height: auto;
+            max-height: 50px;
+            object-fit: contain;
+        }
+        
+        .challenge-title {
+            font-size: 24px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .challenge-subtitle {
+            font-size: 14px;
+            opacity: 0.9;
+            margin-top: 5px;
+        }
+        
+        .project-info {
+            text-align: right;
+        }
+        
+        .project-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #FFD700;
+        }
+        
+        .project-subtitle {
+            font-size: 12px;
+            opacity: 0.8;
+            margin-top: 3px;
+        }
+        
+        #map {
+            margin-top: 80px;
+            height: calc(100vh - 80px);
+        }
+    </style>
+</head>
+<body>
+    <!-- NASA Space Apps Challenge Header -->
+    <div class="nasa-header">
+        <div class="nasa-logo-section">
+            <div class="nasa-logo">
+                <img src="https://assets.spaceappschallenge.org/media/images/Colorway2-Color_White3x.width-440.jpegquality-60.png" alt="NASA Space Apps Challenge Logo">
+            </div>
+            <div>
+                <div class="challenge-title">2025 NASA Space Apps Challenge</div>
+                <div class="challenge-subtitle">Ocean Data Visualization & Marine Life Analysis</div>
+            </div>
+        </div>
+        <div class="project-info">
+            <div class="project-title">🦈 Shark Tracker</div>
+            <div class="project-subtitle">Real-time Marine Ecosystem Monitoring</div>
+        </div>
+    </div>
+
+    <div class="info-panel" style="top: 100px;">
+        <h3>🦈 Shark Data Visualization</h3>
+        <p>Interactive map showing shark location data points colored by category.</p>
+        <p><strong>Total Points:</strong> <span id="point-count">Loading...</span></p>
+        
+        <div class="month-selector">
+            <h4>🌊 Chlorophyll Data</h4>
+            <label for="month-select">Select Month:</label>
+            <select id="month-select">
+                <option value="">-- Select Month --</option>
+                <option value="201301">Enero 2013 (January)</option>
+                <option value="201302">Febrero 2013 (February)</option>
+                <option value="201303">Marzo 2013 (March)</option>
+                <option value="201304">Abril 2013 (April)</option>
+                <option value="201305">Mayo 2013 (May)</option>
+                <option value="201306">Junio 2013 (June)</option>
+                <option value="201307">Julio 2013 (July)</option>
+                <option value="201308">Agosto 2013 (August)</option>
+                <option value="201309">Septiembre 2013 (September)</option>
+                <option value="201310">Octubre 2013 (October)</option>
+                <option value="201311">Noviembre 2013 (November)</option>
+                <option value="201312">Diciembre 2013 (December)</option>
+            </select>
+            <button id="clear-chlorophyll" style="margin-top: 5px; padding: 5px 10px; border: none; background-color: #ff6b6b; color: white; border-radius: 4px; cursor: pointer;">Clear Chlorophyll</button>
+        </div>
+        <div class="month-selector" style="margin-top: 15px;">
+            <h4>💧 Humidity Data</h4>
+            <div style="margin-bottom: 10px;">
+                <input type="checkbox" id="humidity-toggle" style="margin-right: 5px;">
+                <label for="humidity-toggle">Show Humidity Data</label>
+            </div>
+            <label for="humidity-month-select">Select Month:</label>
+            <select id="humidity-month-select" disabled>
+                <option value="">-- Select Month --</option>
+                <option value="201301">Enero 2013 (January)</option>
+                <option value="201302">Febrero 2013 (February)</option>
+                <option value="201303">Marzo 2013 (March)</option>
+                <option value="201304">Abril 2013 (April)</option>
+                <option value="201305">Mayo 2013 (May)</option>
+                <option value="201306">Junio 2013 (June)</option>
+                <option value="201307">Julio 2013 (July)</option>
+                <option value="201308">Agosto 2013 (August)</option>
+                <option value="201309">Septiembre 2013 (September)</option>
+                <option value="201310">Octubre 2013 (October)</option>
+                <option value="201311">Noviembre 2013 (November)</option>
+                <option value="201312">Diciembre 2013 (December)</option>
+            </select>
+            <button id="clear-humidity" style="margin-top: 5px; padding: 5px 10px; border: none; background-color: #4A90E2; color: white; border-radius: 4px; cursor: pointer;" disabled>Clear Humidity</button>
+            <div id="humidity-info" style="margin-top: 10px; font-size: 12px; color: #666;"></div>
+        </div>
+        
+        <div class="month-selector" style="margin-top: 15px;">
+            <h4>🌡️ Temperature Data</h4>
+            <div style="margin-bottom: 10px;">
+                <input type="checkbox" id="temperature-toggle" style="margin-right: 5px;">
+                <label for="temperature-toggle">Show Temperature Data</label>
+            </div>
+            <label for="temperature-month-select">Select Month:</label>
+            <select id="temperature-month-select" disabled>
+                <option value="">-- Select Month --</option>
+                <option value="201301">Enero 2013 (January)</option>
+                <option value="201302">Febrero 2013 (February)</option>
+                <option value="201303">Marzo 2013 (March)</option>
+                <option value="201304">Abril 2013 (April)</option>
+                <option value="201305">Mayo 2013 (May)</option>
+                <option value="201306">Junio 2013 (June)</option>
+                <option value="201307">Julio 2013 (July)</option>
+                <option value="201308">Agosto 2013 (August)</option>
+                <option value="201309">Septiembre 2013 (September)</option>
+                <option value="201310">Octubre 2013 (October)</option>
+                <option value="201311">Noviembre 2013 (November)</option>
+                <option value="201312">Diciembre 2013 (December)</option>
+            </select>
+            <button id="clear-temperature" style="margin-top: 5px; padding: 5px 10px; border: none; background-color: #FF6B35; color: white; border-radius: 4px; cursor: pointer;" disabled>Clear Temperature</button>
+            <div id="temperature-info" style="margin-top: 10px; font-size: 12px; color: #666;"></div>
+        </div>
+        
+        <div class="month-selector" style="margin-top: 15px;">
+            <h4>🌬️ Pressure Data</h4>
+            <div style="margin-bottom: 10px;">
+                <input type="checkbox" id="pressure-toggle" style="margin-right: 5px;">
+                <label for="pressure-toggle">Show Pressure Data</label>
+            </div>
+            <label for="pressure-month-select">Select Month:</label>
+            <select id="pressure-month-select" disabled>
+                <option value="">-- Select Month --</option>
+                <option value="201301">Enero 2013 (January)</option>
+                <option value="201302">Febrero 2013 (February)</option>
+                <option value="201303">Marzo 2013 (March)</option>
+                <option value="201304">Abril 2013 (April)</option>
+                <option value="201305">Mayo 2013 (May)</option>
+                <option value="201306">Junio 2013 (June)</option>
+                <option value="201307">Julio 2013 (July)</option>
+                <option value="201308">Agosto 2013 (August)</option>
+                <option value="201309">Septiembre 2013 (September)</option>
+                <option value="201310">Octubre 2013 (October)</option>
+                <option value="201311">Noviembre 2013 (November)</option>
+                <option value="201312">Diciembre 2013 (December)</option>
+            </select>
+            <button id="clear-pressure" style="margin-top: 5px; padding: 5px 10px; border: none; background-color: #9B59B6; color: white; border-radius: 4px; cursor: pointer;" disabled>Clear Pressure</button>
+            <div id="pressure-info" style="margin-top: 10px; font-size: 12px; color: #666;"></div>
+        </div>
+    </div>
+    
+    <div class="legend">
+        <h4>Legend</h4>
+        <div class="legend-item">
+            <div class="legend-color" style="background-color: #808080;"></div>
+            <span>Gris (Gray)</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background-color: #FF00FF;"></div>
+            <span>Magenta</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background-color: #00FF00;"></div>
+            <span>Verde (Green)</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background-color: #00AA00;"></div>
+            <span>🌊 Chlorophyll Data</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background-color: #0000FF;"></div>
+            <span>💧 Humidity Data</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background-color: #FF6B35;"></div>
+            <span>🌡️ Temperature Data</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background-color: #9B59B6;"></div>
+            <span>🌬️ Pressure Data</span>
+        </div>
+    </div>
+    
+
+    <div id="map"></div>
+
+    <script>
+        // You need to replace 'YOUR_MAPBOX_ACCESS_TOKEN' with your actual Mapbox access token
+        // Get a free token at: https://account.mapbox.com/access-tokens/
+        mapboxgl.accessToken = 'pk.eyJ1Ijoiam9zZXBoLWNlbnRpbmVsYSIsImEiOiJjbTNnYXFveXEwMmpoMmxvaTAzOGNqdmgwIn0.pEPZ9XIRZZoYDinwSDa_fQ';
+
+        // Initialize the map
+        const map = new mapboxgl.Map({
+            container: 'map',
+            style: 'mapbox://styles/mapbox/light-v10',
+            center: [-60, 35], // Centered roughly on the data
+            zoom: 4
+        });
+
+        // Color mapping function
+        function getColorForType(colorType) {
+            switch(colorType) {
+                case 'Gris': return '#808080';
+                case 'Magenta': return '#FF00FF';
+                case 'Verde': return '#00FF00';
+                default: return '#000000';
+            }
+        }
+
+        // Load and display shark data
+        async function loadSharkData() {
+            try {
+                const response = await fetch('/api/shark_data');
+                const sharkData = await response.json();
+                
+                // Update point count
+                document.getElementById('point-count').textContent = sharkData.length;
+                
+                // Prepare GeoJSON data
+                const geojsonData = {
+                    type: 'FeatureCollection',
+                    features: sharkData.map((point, index) => ({
+                        type: 'Feature',
+                        properties: {
+                            id: index,
+                            color: point.color_punto,
+                            colorCode: getColorForType(point.color_punto)
+                        },
+                        geometry: {
+                            type: 'Point',
+                            coordinates: [point.longitud, point.latitud]
+                        }
+                    }))
+                };
+
+                // Add the data source
+                map.addSource('shark-data', {
+                    type: 'geojson',
+                    data: geojsonData
+                });
+
+                // Add circle layer for the points
+                map.addLayer({
+                    id: 'shark-points',
+                    type: 'circle',
+                    source: 'shark-data',
+                    paint: {
+                        'circle-radius': 6,
+                        'circle-color': ['get', 'colorCode'],
+                        'circle-stroke-width': 1,
+                        'circle-stroke-color': '#ffffff'
+                    }
+                });
+
+                // Add popup on click
+                map.on('click', 'shark-points', (e) => {
+                    const coordinates = e.features[0].geometry.coordinates.slice();
+                    const properties = e.features[0].properties;
+                    
+                    // Ensure that if the map is zoomed out such that multiple
+                    // copies of the feature are visible, the popup appears
+                    // over the copy being pointed to.
+                    while (Math.abs(e.lngLat.lng - coordinates[0]) > 180) {
+                        coordinates[0] += e.lngLat.lng > coordinates[0] ? 360 : -360;
+                    }
+
+                    new mapboxgl.Popup()
+                        .setLngLat(coordinates)
+                        .setHTML(`
+                            <h4>Shark Data Point</h4>
+                            <p><strong>Color:</strong> ${properties.color}</p>
+                            <p><strong>Coordinates:</strong><br>
+                            Lat: ${coordinates[1].toFixed(4)}<br>
+                            Lng: ${coordinates[0].toFixed(4)}</p>
+                        `)
+                        .addTo(map);
+                });
+
+                // Change cursor to pointer when hovering over points
+                map.on('mouseenter', 'shark-points', () => {
+                    map.getCanvas().style.cursor = 'pointer';
+                });
+
+                // Change cursor back when not hovering
+                map.on('mouseleave', 'shark-points', () => {
+                    map.getCanvas().style.cursor = '';
+                });
+
+            } catch (error) {
+                console.error('Error loading shark data:', error);
+                document.getElementById('point-count').textContent = 'Error loading data';
+            }
+        }
+        async function loadChlorophyllData(mes) {
+            try {
+                const response = await fetch(`/api/chlorophyll/${mes}`);
+                const data = await response.json();
+                
+                // Check if the response is an error object
+                if (data.error) {
+                    console.warn('Chlorophyll data error:', data.error);
+                    if (data.available_months) {
+                        console.log('Available months:', data.available_months);
+                    }
+                    return;
+                }
+                
+                // Check if data is an array and has elements
+                if (!Array.isArray(data) || data.length === 0) {
+                    console.warn('No chlorophyll data found for month:', mes);
+                    return;
+                }
+
+                console.log(`Loading ${data.length} chlorophyll points for month ${mes}`);
+
+                // Create GeoJSON with individual points instead of a line
+                const geojsonPoints = {
+                    type: 'FeatureCollection',
+                    features: data.map((point, index) => ({
+                        type: 'Feature',
+                        properties: {
+                            id: index,
+                            month: mes
+                        },
+                        geometry: {
+                            type: 'Point',
+                            coordinates: [point.longitude, point.latitude]
+                        }
+                    }))
+                };
+
+                // Add the chlorophyll points data source
+                if (map.getSource('chlorophyll-points')) {
+                    map.getSource('chlorophyll-points').setData(geojsonPoints);
+                } else {
+                    map.addSource('chlorophyll-points', {
+                        type: 'geojson',
+                        data: geojsonPoints
+                    });
+
+                    // Add circle layer for the chlorophyll points (more transparent and below sharks)
+                    map.addLayer({
+                        id: 'chlorophyll-points-layer',
+                        type: 'circle',
+                        source: 'chlorophyll-points',
+                        paint: {
+                            'circle-radius': 2,
+                            'circle-color': '#00AA00',
+                            'circle-stroke-width': 0.5,
+                            'circle-stroke-color': '#008800',
+                            'circle-opacity': 0.3,
+                            'circle-stroke-opacity': 0.2
+                        }
+                    }, 'shark-points'); // Add before shark-points to keep sharks on top
+
+                    // Add popup for chlorophyll points
+                    map.on('click', 'chlorophyll-points-layer', (e) => {
+                        const coordinates = e.features[0].geometry.coordinates.slice();
+                        const properties = e.features[0].properties;
+
+                        new mapboxgl.Popup()
+                            .setLngLat(coordinates)
+                            .setHTML(`
+                                <h4>🌊 Chlorophyll Data Point</h4>
+                                <p><strong>Month:</strong> ${properties.month}</p>
+                                <p><strong>Coordinates:</strong><br>
+                                Lat: ${coordinates[1].toFixed(4)}<br>
+                                Lng: ${coordinates[0].toFixed(4)}</p>
+                            `)
+                            .addTo(map);
+                    });
+
+                    // Change cursor to pointer when hovering over chlorophyll points
+                    map.on('mouseenter', 'chlorophyll-points-layer', () => {
+                        map.getCanvas().style.cursor = 'pointer';
+                    });
+
+                    // Change cursor back when not hovering
+                    map.on('mouseleave', 'chlorophyll-points-layer', () => {
+                        map.getCanvas().style.cursor = '';
+                    });
+                }
+
+            } catch (error) {
+                console.error('Error loading chlorophyll data:', error);
+            }
+        }
+
+        // Clear chlorophyll data function
+        function clearChlorophyllData() {
+            if (map.getLayer('chlorophyll-points-layer')) {
+                map.removeLayer('chlorophyll-points-layer');
+            }
+            if (map.getSource('chlorophyll-points')) {
+                map.removeSource('chlorophyll-points');
+            }
+        }
+
+        // Clear humidity data function
+        function clearHumidityData() {
+            if (map.getLayer('humidity-points-layer')) {
+                map.removeLayer('humidity-points-layer');
+            }
+            if (map.getSource('humidity-points')) {
+                map.removeSource('humidity-points');
+            }
+        }
+
+        // Load available humidity months and update dropdown
+        async function loadAvailableHumidityMonths() {
+            try {
+                const response = await fetch('/api/humidity/available');
+                const data = await response.json();
+                
+                if (data.available_months && data.available_months.length > 0) {
+                    const humiditySelect = document.getElementById('humidity-month-select');
+                    const humidityInfo = document.getElementById('humidity-info');
+                    
+                    // Clear existing options except the first one
+                    while (humiditySelect.children.length > 1) {
+                        humiditySelect.removeChild(humiditySelect.lastChild);
+                    }
+                    
+                    // Add available months
+                    data.available_months.forEach(month => {
+                        const option = document.createElement('option');
+                        option.value = month;
+                        option.textContent = `${month} (Available)`;
+                        humiditySelect.appendChild(option);
+                    });
+                    
+                    console.log('Available humidity months:', data.available_months);
+                    
+                    // Update info when checkbox is not checked
+                    if (!document.getElementById('humidity-toggle').checked) {
+                        humidityInfo.textContent = `${data.total_months} months available. Enable checkbox to show data.`;
+                    }
+                } else {
+                    console.warn('No humidity data available');
+                    document.getElementById('humidity-info').textContent = 'No humidity data available';
+                }
+            } catch (error) {
+                console.error('Error loading available humidity months:', error);
+                document.getElementById('humidity-info').textContent = 'Error loading humidity months';
+            }
+        }
+
+        // Temperature functions
+        async function loadTemperatureData(mes) {
+            try {
+                const temperatureInfo = document.getElementById('temperature-info');
+                temperatureInfo.textContent = `Loading temperature data for ${mes}...`;
+                
+                const response = await fetch(`/api/temperature/${mes}`);
+                const data = await response.json();
+                
+                if (data.error) {
+                    console.warn('Temperature data error:', data.error);
+                    temperatureInfo.textContent = `❌ No temperature data for ${mes}`;
+                    return;
+                }
+                
+                if (!Array.isArray(data) || data.length === 0) {
+                    temperatureInfo.textContent = `No temperature data found for ${mes}`;
+                    return;
+                }
+
+                console.log(`Loading ${data.length} temperature points for month ${mes}`);
+                temperatureInfo.textContent = `Showing ${data.length} temperature points for ${mes}`;
+
+                // Create GeoJSON with temperature data
+                const geojsonPoints = {
+                    type: 'FeatureCollection',
+                    features: data.map((point, index) => ({
+                        type: 'Feature',
+                        properties: {
+                            id: index,
+                            month: mes,
+                            temperature: point.temperature
+                        },
+                        geometry: {
+                            type: 'Point',
+                            coordinates: [point.longitude, point.latitude]
+                        }
+                    }))
+                };
+
+                // Add temperature points data source
+                if (map.getSource('temperature-points')) {
+                    map.getSource('temperature-points').setData(geojsonPoints);
+                } else {
+                    map.addSource('temperature-points', {
+                        type: 'geojson',
+                        data: geojsonPoints
+                    });
+
+                    // Add temperature layer
+                    map.addLayer({
+                        id: 'temperature-points-layer',
+                        type: 'circle',
+                        source: 'temperature-points',
+                        paint: {
+                            'circle-radius': 3,
+                            'circle-color': '#FF6B35',
+                            'circle-stroke-width': 0.5,
+                            'circle-stroke-color': '#D84315',
+                            'circle-opacity': 0.6,
+                            'circle-stroke-opacity': 0.4
+                        }
+                    }, 'shark-points');
+
+                    // Add popup for temperature points
+                    map.on('click', 'temperature-points-layer', (e) => {
+                        const coordinates = e.features[0].geometry.coordinates.slice();
+                        const properties = e.features[0].properties;
+
+                        new mapboxgl.Popup()
+                            .setLngLat(coordinates)
+                            .setHTML(`
+                                <h4>🌡️ Temperature Data</h4>
+                                <p><strong>Temperature:</strong> ${properties.temperature.toFixed(1)}°C</p>
+                                <p><strong>Month:</strong> ${properties.month}</p>
+                                <p><strong>Coordinates:</strong><br>
+                                Lat: ${coordinates[1].toFixed(4)}<br>
+                                Lng: ${coordinates[0].toFixed(4)}</p>
+                            `)
+                            .addTo(map);
+                    });
+
+                    map.on('mouseenter', 'temperature-points-layer', () => {
+                        map.getCanvas().style.cursor = 'pointer';
+                    });
+
+                    map.on('mouseleave', 'temperature-points-layer', () => {
+                        map.getCanvas().style.cursor = '';
+                    });
+                }
+            } catch (error) {
+                console.error('Error loading temperature data:', error);
+                document.getElementById('temperature-info').textContent = `Error: ${error.message}`;
+            }
+        }
+
+        function clearTemperatureData() {
+            if (map.getLayer('temperature-points-layer')) {
+                map.removeLayer('temperature-points-layer');
+            }
+            if (map.getSource('temperature-points')) {
+                map.removeSource('temperature-points');
+            }
+        }
+
+        // Pressure functions
+        async function loadPressureData(mes) {
+            try {
+                const pressureInfo = document.getElementById('pressure-info');
+                pressureInfo.textContent = `Loading pressure data for ${mes}...`;
+                
+                const response = await fetch(`/api/pressure/${mes}`);
+                const data = await response.json();
+                
+                if (data.error) {
+                    console.warn('Pressure data error:', data.error);
+                    pressureInfo.textContent = `❌ No pressure data for ${mes}`;
+                    return;
+                }
+                
+                if (!Array.isArray(data) || data.length === 0) {
+                    pressureInfo.textContent = `No pressure data found for ${mes}`;
+                    return;
+                }
+
+                console.log(`Loading ${data.length} pressure points for month ${mes}`);
+                pressureInfo.textContent = `Showing ${data.length} pressure points for ${mes}`;
+
+                // Create GeoJSON with pressure data
+                const geojsonPoints = {
+                    type: 'FeatureCollection',
+                    features: data.map((point, index) => ({
+                        type: 'Feature',
+                        properties: {
+                            id: index,
+                            month: mes,
+                            pressure: point.pressure
+                        },
+                        geometry: {
+                            type: 'Point',
+                            coordinates: [point.longitude, point.latitude]
+                        }
+                    }))
+                };
+
+                // Add pressure points data source
+                if (map.getSource('pressure-points')) {
+                    map.getSource('pressure-points').setData(geojsonPoints);
+                } else {
+                    map.addSource('pressure-points', {
+                        type: 'geojson',
+                        data: geojsonPoints
+                    });
+
+                    // Add pressure layer with enhanced visualization for large clusters and scattered points
+                    map.addLayer({
+                        id: 'pressure-points-layer',
+                        type: 'circle',
+                        source: 'pressure-points',
+                        paint: {
+                            'circle-radius': [
+                                'interpolate',
+                                ['linear'],
+                                ['get', 'pressure'],
+                                985, 2,   // Background scattered points = very small
+                                1000, 3,  // Low cluster pressure = small points
+                                1015, 5,  // Medium cluster pressure = medium points  
+                                1030, 7,  // High cluster pressure = large points
+                                1040, 9   // Extreme pressure = very large points
+                            ],
+                            'circle-color': [
+                                'interpolate',
+                                ['linear'],
+                                ['get', 'pressure'],
+                                985, '#F3E5F5',   // Very light purple for scattered background
+                                1000, '#E1BEE7',  // Light purple for low pressure
+                                1010, '#CE93D8',  // Medium-light purple
+                                1020, '#9B59B6',  // Medium purple for cluster centers
+                                1030, '#7B1FA2',  // Dark purple for high pressure
+                                1040, '#4A148C'   // Very dark purple for extreme pressure
+                            ],
+                            'circle-stroke-width': [
+                                'interpolate',
+                                ['linear'],
+                                ['get', 'pressure'],
+                                985, 0,    // No stroke for background points
+                                1015, 0.3, // Thin stroke for cluster edges
+                                1030, 0.8  // Thick stroke for cluster centers
+                            ],
+                            'circle-stroke-color': '#4A148C',
+                            'circle-opacity': [
+                                'interpolate',
+                                ['linear'],
+                                ['get', 'pressure'],
+                                985, 0.3,  // Very transparent for background
+                                1015, 0.6, // Medium opacity for clusters
+                                1030, 0.8  // High opacity for centers
+                            ],
+                            'circle-stroke-opacity': 0.6
+                        }
+                    }, 'shark-points');
+
+                    // Add popup for pressure points
+                    map.on('click', 'pressure-points-layer', (e) => {
+                        const coordinates = e.features[0].geometry.coordinates.slice();
+                        const properties = e.features[0].properties;
+
+                        new mapboxgl.Popup()
+                            .setLngLat(coordinates)
+                            .setHTML(`
+                                <h4>🌬️ Pressure Data</h4>
+                                <p><strong>Pressure:</strong> ${properties.pressure.toFixed(1)} hPa</p>
+                                <p><strong>Month:</strong> ${properties.month}</p>
+                                <p><strong>Coordinates:</strong><br>
+                                Lat: ${coordinates[1].toFixed(4)}<br>
+                                Lng: ${coordinates[0].toFixed(4)}</p>
+                            `)
+                            .addTo(map);
+                    });
+
+                    map.on('mouseenter', 'pressure-points-layer', () => {
+                        map.getCanvas().style.cursor = 'pointer';
+                    });
+
+                    map.on('mouseleave', 'pressure-points-layer', () => {
+                        map.getCanvas().style.cursor = '';
+                    });
+                }
+            } catch (error) {
+                console.error('Error loading pressure data:', error);
+                document.getElementById('pressure-info').textContent = `Error: ${error.message}`;
+            }
+        }
+
+        function clearPressureData() {
+            if (map.getLayer('pressure-points-layer')) {
+                map.removeLayer('pressure-points-layer');
+            }
+            if (map.getSource('pressure-points')) {
+                map.removeSource('pressure-points');
+            }
+        }
+
+        async function loadHumidityData(mes) {
+            try {
+                const humidityInfo = document.getElementById('humidity-info');
+                humidityInfo.textContent = `Loading humidity data for ${mes}...`;
+                
+                const response = await fetch(`/api/humidity/${mes}`);
+                const data = await response.json();
+                
+                // Check if the response is an error object
+                if (data.error) {
+                    console.warn('Humidity data error:', data.error);
+                    if (data.available_months && data.available_months.length > 0) {
+                        humidityInfo.innerHTML = `❌ No data for ${mes}. Available: ${data.available_months.join(', ')}`;
+                        console.log('Available months:', data.available_months);
+                    } else {
+                        humidityInfo.textContent = `❌ No humidity data available for ${mes}`;
+                    }
+                    return;
+                }
+                
+                // Check if data is an array and has elements
+                if (!Array.isArray(data) || data.length === 0) {
+                    console.warn('No humidity data found for month:', mes);
+                    humidityInfo.textContent = `No humidity data found for ${mes}`;
+                    return;
+                }
+
+                console.log(`Loading ${data.length} humidity points for month ${mes}`);
+                humidityInfo.textContent = `Showing ${data.length} humidity points for ${mes}`;
+
+                // Create GeoJSON with individual points instead of a line
+                const geojsonPoints = {
+                    type: 'FeatureCollection',
+                    features: data.map((point, index) => ({
+                        type: 'Feature',
+                        properties: {
+                            id: index,
+                            month: mes
+                        },
+                        geometry: {
+                            type: 'Point',
+                            coordinates: [point.longitude, point.latitude]
+                        }
+                    }))
+                };
+
+                // Add the humidity points data source
+                if (map.getSource('humidity-points')) {
+                    map.getSource('humidity-points').setData(geojsonPoints);
+                } else {
+                    map.addSource('humidity-points', {
+                        type: 'geojson',
+                        data: geojsonPoints
+                    });
+
+                    // Add circle layer for the humidity points (more transparent and below sharks)
+                    map.addLayer({
+                        id: 'humidity-points-layer',
+                        type: 'circle',
+                        source: 'humidity-points',
+                        paint: {
+                            'circle-radius': 2,
+                            'circle-color': '#0000FF',
+                            'circle-stroke-width': 0.5,
+                            'circle-stroke-color': '#0000AA',
+                            'circle-opacity': 0.4,
+                            'circle-stroke-opacity': 0.3
+                        }
+                    }, 'shark-points'); // Add before shark-points to keep sharks on top
+
+                    // Add popup for humidity points
+                    map.on('click', 'humidity-points-layer', (e) => {
+                        const coordinates = e.features[0].geometry.coordinates.slice();
+                        const properties = e.features[0].properties;
+
+                        new mapboxgl.Popup()
+                            .setLngLat(coordinates)
+                            .setHTML(`
+                                <h4>💧 Humidity Data Point</h4>
+                                <p><strong>Month:</strong> ${properties.month}</p>
+                                <p><strong>Coordinates:</strong><br>
+                                Lat: ${coordinates[1].toFixed(4)}<br>
+                                Lng: ${coordinates[0].toFixed(4)}</p>
+                            `)
+                            .addTo(map);
+                    });
+                    // Change cursor to pointer when hovering over humidity points
+                    map.on('mouseenter', 'humidity-points-layer', () => {
+                        map.getCanvas().style.cursor = 'pointer';
+                    });
+
+                    map.on('mouseleave', 'humidity-points-layer', () => {
+                        map.getCanvas().style.cursor = '';
+                    });
+                }
+            } catch (error) {
+                console.error('Error loading humidity data:', error);
+                const humidityInfo = document.getElementById('humidity-info');
+                humidityInfo.textContent = `Error loading humidity data: ${error.message}`;
+            }
+        }
+
+        // Load data when map is ready
+        map.on('load', () => {
+            loadSharkData();
+            
+            // Add event listener for chlorophyll month selector
+            const monthSelect = document.getElementById('month-select');
+            monthSelect.addEventListener('change', function() {
+                const selectedMonth = this.value;
+                if (selectedMonth) {
+                    loadChlorophyllData(selectedMonth);
+                } else {
+                    clearChlorophyllData();
+                }
+            });
+            
+            // Add event listener for chlorophyll clear button
+            const clearButton = document.getElementById('clear-chlorophyll');
+            clearButton.addEventListener('click', function() {
+                clearChlorophyllData();
+                monthSelect.value = ''; // Reset dropdown
+            });
+
+            // Add event listeners for humidity controls
+            const humidityToggle = document.getElementById('humidity-toggle');
+            const humidityMonthSelect = document.getElementById('humidity-month-select');
+            const clearHumidityButton = document.getElementById('clear-humidity');
+            const humidityInfo = document.getElementById('humidity-info');
+
+            // Toggle humidity controls
+            humidityToggle.addEventListener('change', function() {
+                const isEnabled = this.checked;
+                humidityMonthSelect.disabled = !isEnabled;
+                clearHumidityButton.disabled = !isEnabled;
+                
+                if (!isEnabled) {
+                    clearHumidityData();
+                    humidityMonthSelect.value = '';
+                    // Show available months count when disabled
+                    const availableCount = humidityMonthSelect.children.length - 1; // Subtract the "-- Select Month --" option
+                    humidityInfo.textContent = `${availableCount} months available. Enable checkbox to show data.`;
+                } else {
+                    humidityInfo.textContent = 'Select an available month to display humidity data';
+                }
+            });
+
+            // Load humidity data when month is selected
+            humidityMonthSelect.addEventListener('change', function() {
+                const selectedMonth = this.value;
+                if (selectedMonth && humidityToggle.checked) {
+                    loadHumidityData(selectedMonth);
+                    humidityInfo.textContent = `Loading humidity data for ${selectedMonth}...`;
+                } else {
+                    clearHumidityData();
+                    humidityInfo.textContent = humidityToggle.checked ? 'Select a month to display humidity data' : 'Humidity display disabled';
+                }
+            });
+            
+            // Add event listener for humidity clear button
+            clearHumidityButton.addEventListener('click', function() {
+                clearHumidityData();
+                humidityMonthSelect.value = '';
+                humidityInfo.textContent = '🧹 Humidity data cleared. Select another month or disable checkbox.';
+            });
+
+            // Initialize humidity info and load available months
+            humidityInfo.textContent = 'Enable checkbox to show humidity data';
+            loadAvailableHumidityMonths();
+
+            // Add event listeners for temperature controls
+            const temperatureToggle = document.getElementById('temperature-toggle');
+            const temperatureMonthSelect = document.getElementById('temperature-month-select');
+            const clearTemperatureButton = document.getElementById('clear-temperature');
+            const temperatureInfo = document.getElementById('temperature-info');
+
+            // Toggle temperature controls
+            temperatureToggle.addEventListener('change', function() {
+                const isEnabled = this.checked;
+                temperatureMonthSelect.disabled = !isEnabled;
+                clearTemperatureButton.disabled = !isEnabled;
+                
+                if (!isEnabled) {
+                    clearTemperatureData();
+                    temperatureMonthSelect.value = '';
+                    temperatureInfo.textContent = '12 months available. Enable checkbox to show data.';
+                } else {
+                    temperatureInfo.textContent = 'Select a month to display temperature data';
+                }
+            });
+
+            // Load temperature data when month is selected
+            temperatureMonthSelect.addEventListener('change', function() {
+                const selectedMonth = this.value;
+                if (selectedMonth && temperatureToggle.checked) {
+                    loadTemperatureData(selectedMonth);
+                } else {
+                    clearTemperatureData();
+                    temperatureInfo.textContent = temperatureToggle.checked ? 'Select a month to display temperature data' : '12 months available. Enable checkbox to show data.';
+                }
+            });
+            
+            // Clear temperature data
+            clearTemperatureButton.addEventListener('click', function() {
+                clearTemperatureData();
+                temperatureMonthSelect.value = '';
+                temperatureInfo.textContent = '🧹 Temperature data cleared. Select another month or disable checkbox.';
+            });
+
+            // Add event listeners for pressure controls
+            const pressureToggle = document.getElementById('pressure-toggle');
+            const pressureMonthSelect = document.getElementById('pressure-month-select');
+            const clearPressureButton = document.getElementById('clear-pressure');
+            const pressureInfo = document.getElementById('pressure-info');
+
+            // Toggle pressure controls
+            pressureToggle.addEventListener('change', function() {
+                const isEnabled = this.checked;
+                pressureMonthSelect.disabled = !isEnabled;
+                clearPressureButton.disabled = !isEnabled;
+                
+                if (!isEnabled) {
+                    clearPressureData();
+                    pressureMonthSelect.value = '';
+                    pressureInfo.textContent = '12 months available. Enable checkbox to show data.';
+                } else {
+                    pressureInfo.textContent = 'Select a month to display pressure data';
+                }
+            });
+
+            // Load pressure data when month is selected
+            pressureMonthSelect.addEventListener('change', function() {
+                const selectedMonth = this.value;
+                if (selectedMonth && pressureToggle.checked) {
+                    loadPressureData(selectedMonth);
+                } else {
+                    clearPressureData();
+                    pressureInfo.textContent = pressureToggle.checked ? 'Select a month to display pressure data' : '12 months available. Enable checkbox to show data.';
+                }
+            });
+            
+            // Clear pressure data
+            clearPressureButton.addEventListener('click', function() {
+                clearPressureData();
+                pressureMonthSelect.value = '';
+                pressureInfo.textContent = '🧹 Pressure data cleared. Select another month or disable checkbox.';
+            });
+
+            // Initialize temperature and pressure info
+            temperatureInfo.textContent = '12 months available. Enable checkbox to show data.';
+            pressureInfo.textContent = '12 months available. Enable checkbox to show data.';
+        });
+    </script>
+</body>
+</html>
